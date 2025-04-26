@@ -1,0 +1,68 @@
+#!/bin/bash
+
+# Colors
+RED="\033[0;31m"
+GREEN="\033[0;32m"
+YELLOW="\033[1;33m"
+NC="\033[0m" # No Color
+
+# Banner
+echo -e "${YELLOW}"
+echo "┌─────────────────────────────┐"
+echo "│        Quick Port Scan       │"
+echo "└─────────────────────────────┘"
+echo -e "${NC}"
+
+# Inputs
+IP="$1"
+SCANNER="$2"
+
+if [ -z "$IP" ]; then
+    echo -e "${RED}[!] Usage: $0 <IP_ADDRESS> [nmap|rustscan]${NC}"
+    exit 1
+fi
+
+# Default to nmap if scanner not provided
+if [ -z "$SCANNER" ]; then
+    SCANNER="nmap"
+fi
+
+# Confirm target and scanner
+echo -e "${YELLOW}[*] Target IP: $IP${NC}"
+echo -e "${YELLOW}[*] Scanner: $SCANNER${NC}"
+
+# Create safe folder
+IP_FOLDER=${IP//./_}
+TARGET_DIR="nmap/$IP_FOLDER"
+mkdir -p "$TARGET_DIR"
+
+# Scan
+if [ "$SCANNER" == "nmap" ]; then
+    echo -e "${GREEN}[*] Running Nmap full port scan on $IP...${NC}"
+    nmap -T4 -p- "$IP" | awk -F'/' '/open/ {printf "%s%s", sep, $1; sep=","} END{print ""}' > "$TARGET_DIR/ports_only.txt"
+elif [ "$SCANNER" == "rustscan" ]; then
+    echo -e "${GREEN}[*] Running Rustscan fast scan on $IP...${NC}"
+    rustscan -a "$IP" | awk -F'/' '/^[0-9]+\/tcp/ {printf "%s%s", sep, $1; sep=","} END{print ""}' > "$TARGET_DIR/ports_only.txt"
+else
+    echo -e "${RED}[!] Invalid scanner. Choose 'nmap' or 'rustscan'.${NC}"
+    exit 1
+fi
+
+# Load ports
+PORTS=$(cat "$TARGET_DIR/ports_only.txt")
+
+# Check if ports found
+if [ -z "$PORTS" ]; then
+    echo -e "${RED}[!] No open ports found. Exiting.${NC}"
+    exit 1
+fi
+
+# Show open ports
+echo -e "${YELLOW}[*] Open ports: $PORTS${NC}"
+
+# Detailed nmap scan
+echo -e "${GREEN}[*] Running detailed nmap scan on ports...${NC}"
+nmap -p "$PORTS" -sC -sV --open "$IP" -oN "$TARGET_DIR/nmap_result.txt"
+
+# Done
+echo -e "${GREEN}[+] Detailed scan saved to $TARGET_DIR/nmap_result.txt${NC}"
