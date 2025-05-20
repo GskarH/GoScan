@@ -9,60 +9,111 @@ NC="\033[0m" # No Color
 # Banner
 echo -e "${YELLOW}"
 echo "┌─────────────────────────────┐"
-echo "│        Quick Port Scan       │"
+echo "│        Quick Port Scan      │"
 echo "└─────────────────────────────┘"
 echo -e "${NC}"
 
-# Inputs
-IP="$1"
-SCANNER="$2"
-
-if [ -z "$IP" ]; then
-    echo -e "${RED}[!] Usage: $0 <IP_ADDRESS> [nmap|rustscan]${NC}"
+# Check for ipcalc
+if ! command -v nmap &> /dev/null; then
+    echo -e "${RED}[!] Nmap is not installed. Please install it first.${NC}"
     exit 1
 fi
 
-# Default to nmap if scanner not provided
-if [ -z "$SCANNER" ]; then
-    SCANNER="nmap"
-fi
+# Function: Run scan for one IP
+run_scan() {
+    local TARGET="$1"
+    local SCANNER="$2"
+    local SAFE_IP=$(echo "$TARGET" | tr '.' '_' | tr '/' '_')
 
-# Confirm target and scanner
-echo -e "${YELLOW}[*] Target IP: $IP${NC}"
-echo -e "${YELLOW}[*] Scanner: $SCANNER${NC}"
+    mkdir -p "$SAFE_IP"
 
-# Create safe folder
-IP_FOLDER=${IP//./_}
-TARGET_DIR="nmap/$IP_FOLDER"
-mkdir -p "$TARGET_DIR"
+    if [ "$SCANNER" == "rustscan" ]; then
+        echo -e "${GREEN}[*] Rustscan on $TARGET...${NC}"
+        rustscan -a "$TARGET" | awk -F'/' '/^[0-9]+\/tcp/ {printf "%s%s", sep, $1; sep=","} END{print ""}' > "$SAFE_IP/ports_only.txt"
+    else
+        echo -e "${GREEN}[*] Nmap full port scan on $TARGET...${NC}"
+        nmap -T4 -p- "$TARGET" | awk -F'/' '/open/ {printf "%s%s", sep, $1; sep=","} END{print ""}' > "$SAFE_IP/ports_only.txt"
+    fi
 
-# Scan
-if [ "$SCANNER" == "nmap" ]; then
-    echo -e "${GREEN}[*] Running Nmap full port scan on $IP...${NC}"
-    nmap -T4 -p- "$IP" | awk -F'/' '/open/ {printf "%s%s", sep, $1; sep=","} END{print ""}' > "$TARGET_DIR/ports_only.txt"
-elif [ "$SCANNER" == "rustscan" ]; then
-    echo -e "${GREEN}[*] Running Rustscan fast scan on $IP...${NC}"
-    rustscan -a "$IP" | awk -F'/' '/^[0-9]+\/tcp/ {printf "%s%s", sep, $1; sep=","} END{print ""}' > "$TARGET_DIR/ports_only.txt"
+    PORTS=$(cat "$SAFE_IP/ports_only.txt")
+
+    if [ -z "$PORTS" ]; then
+        echo -e "${RED}[!] No open ports on $TARGET. Skipping.${NC}"
+        return
+    fi
+
+    echo -e "${YELLOW}[*] Open ports: $PORTS${NC}"
+    echo -e "${GREEN}[*] Running detailed scan on $TARGET...${NC}"
+    nmap -p "$PORTS" -sC -sV --open "$TARGET" -oN "$SAFE_IP/nmap_result.txt"
+    echo -e "${GREEN}[+] Results saved in $SAFE_IP/${NC}"
+}
+
+# Function: Expand input into list of IPs
+expand_ips() {
+    local input="$1"
+    local IP_LIST=()
+
+    IFS=',' read -ra PARTS <<< "$input"
+    for part in "${PARTS[@]}"; do
+        if [[ "$part" =~ ^([0-9]+\.[0-9]+\.[0-9]+)\.([0-9]+)-([0-9]+)$ ]]; then
+            prefix="${BASH_REMATCH[1]}"
+            start="${BASH_REMATCH[2]}"
+            end="${BASH_REMATCH[3]}"
+            for ((i=start; i<=end; i++)); do
+                IP_LIST+=("${prefix}.${i}")
+            done
+        elif [[ "$part" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+\/[0-9]+$ ]]; then
+            # CIDR block
+            mapfile -t cidr_ips < <(nmap -n -sL "$part" | awk '/Nmap scan report/{print $NF}')
+            IP_LIST+=("${cidr_ips[@]}")
+        else
+            IP_LIST+=("$part")
+        fi
+    done
+
+    echo "${IP_LIST[@]}"
+}
+
+# Main logic
+if [ "$1" == "-f" ]; then
+    FILE="$2"
+    SCANNER="${3:-nmap}"
+
+    if [ ! -f "$FILE" ]; then
+        echo -e "${RED}[!] File not found: $FILE${NC}"
+        exit 1
+    fi
+
+    while IFS= read -r IP; do
+        [ -z "$IP" ] && continue
+        run_scan "$IP" "$SCANNER"
+    done < "$FILE"
+
+elif [ "$1" == "-i" ]; then
+    RAW_IPS="$2"
+    SCANNER="${3:-nmap}"
+
+    if [ -z "$RAW_IPS" ]; then
+        echo -e "${RED}[!] No IPs specified after -i.${NC}"
+        exit 1
+    fi
+
+    IPS=$(expand_ips "$RAW_IPS")
+    for ip in $IPS; do
+        run_scan "$ip" "$SCANNER"
+    done
+
 else
-    echo -e "${RED}[!] Invalid scanner. Choose 'nmap' or 'rustscan'.${NC}"
-    exit 1
+    IP="$1"
+    SCANNER="${2:-nmap}"
+
+    if [ -z "$IP" ]; then
+        echo -e "${RED}[!] Usage:${NC}
+  geescan <IP_ADDRESS> [nmap|rustscan]
+  geescan -f targets.txt [nmap|rustscan]
+  geescan -i 192.168.1.10,192.168.1.20-25,192.168.1.0/30 [nmap|rustscan]"
+        exit 1
+    fi
+
+    run_scan "$IP" "$SCANNER"
 fi
-
-# Load ports
-PORTS=$(cat "$TARGET_DIR/ports_only.txt")
-
-# Check if ports found
-if [ -z "$PORTS" ]; then
-    echo -e "${RED}[!] No open ports found. Exiting.${NC}"
-    exit 1
-fi
-
-# Show open ports
-echo -e "${YELLOW}[*] Open ports: $PORTS${NC}"
-
-# Detailed nmap scan
-echo -e "${GREEN}[*] Running detailed nmap scan on ports...${NC}"
-nmap -p "$PORTS" -sC -sV --open "$IP" -oN "$TARGET_DIR/nmap_result.txt"
-
-# Done
-echo -e "${GREEN}[+] Detailed scan saved to $TARGET_DIR/nmap_result.txt${NC}"
