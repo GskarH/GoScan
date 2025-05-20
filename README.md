@@ -27,8 +27,8 @@ Make it executable and move it to your `$PATH`:
 ```bash
 git clone https://github.com/GskarH/GoScan.git
 cd GoScan
-chmod +x Goscan
-sudo mv Goscan /usr/local/bin/goscan
+chmod +x ./Goscan
+sudo mv ./Goscan /usr/local/bin/goscan
 ```
 
 Then you can run it anywhere using:
