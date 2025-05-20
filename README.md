@@ -1,4 +1,4 @@
-# Geescan
+# Goscan
 
 A fast, simple script to perform quick network port scans using **nmap** or **rustscan**.  
 Automatically organizes results into folders for each target.
@@ -26,7 +26,7 @@ bash
 
 CopyEdit
 
-`geescan <IP_ADDRESS> [scanner]`
+`Goscan <IP_ADDRESS> [scanner]`
 
 - `<IP_ADDRESS>` → Target IP to scan (Required)
     
@@ -43,7 +43,7 @@ bash
 
 CopyEdit
 
-`geescan 192.168.242.189`
+`Goscan 192.168.242.189`
 
 Using rustscan:
 
@@ -51,21 +51,21 @@ bash
 
 CopyEdit
 
-`geescan 192.168.242.189 rustscan`
+`Goscan 192.168.242.189 rustscan`
 
 ---
 
 ## ⚙️ Installation
 
-Make `geescan` available globally:
+Make `Goscan` available globally:
 
 bash
 
 CopyEdit
 
-`chmod +x geescan sudo mv geescan /usr/local/bin/geescan`
+`chmod +x Goscan sudo mv Goscan /usr/local/bin/Goscan`
 
-Now you can run `geescan` from anywhere!
+Now you can run `Goscan` from anywhere!
 
 ---
 
@@ -81,6 +81,3 @@ CopyEdit
 
 ---
 
-## 📜 License
-
-MIT License — free to use, modify, and share.
