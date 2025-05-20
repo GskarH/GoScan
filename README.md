@@ -25,8 +25,10 @@
 Make it executable and move it to your `$PATH`:
 
 ```bash
-chmod +x goscan.sh
-sudo mv goscan.sh /usr/local/bin/goscan
+git clone https://github.com/GskarH/GoScan.git
+cd GoScan
+chmod +x Goscan
+sudo mv Goscan /usr/local/bin/goscan
 ```
 
 Then you can run it anywhere using:
