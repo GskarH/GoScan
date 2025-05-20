@@ -1,83 +1,66 @@
-# Goscan
+# Goscan 🔎
 
-A fast, simple script to perform quick network port scans using **nmap** or **rustscan**.  
-Automatically organizes results into folders for each target.
-
----
-
-## 📦 Features
-
-- Full TCP port scan (`-p-`) with **nmap** or **rustscan**
-    
-- Auto-extract open ports and run a detailed **nmap** service scan (`-sC -sV`)
-    
-- Saves all results neatly inside `nmap/<target_ip>/`
-    
-- Works globally from anywhere after installation
-    
-- Colorful and clean terminal output ✨
-    
+**Goscan** is a quick and flexible port scanning script written in Bash. It supports scanning single IPs, IP ranges, CIDR blocks, and multiple targets using `nmap` or `rustscan`. Output is neatly organized in folders per IP address.
 
 ---
 
-## 🚀 Usage
+## 🚀 Features
 
-bash
-
-CopyEdit
-
-`Goscan <IP_ADDRESS> [scanner]`
-
-- `<IP_ADDRESS>` → Target IP to scan (Required)
-    
-- `[scanner]` → Choose `nmap` (default) or `rustscan` (Optional)
-    
+- Scan single IPs, ranges, CIDRs, or lists from a file
+- Automatically detects open ports and performs service/version enumeration
+- Supports `nmap` (default) and `rustscan`
+- Saves results in per-IP folders (e.g., `192_168_1_10/`)
 
 ---
 
-### 📚 Examples
+## 🛠 Requirements
 
-Full nmap scan:
-
-bash
-
-CopyEdit
-
-`Goscan 192.168.242.189`
-
-Using rustscan:
-
-bash
-
-CopyEdit
-
-`Goscan 192.168.242.189 rustscan`
+- `nmap` (required)
+- `rustscan` (optional) (Download https://github.com/bee-san/RustScan)
 
 ---
 
-## ⚙️ Installation
+## 📦 Installation
 
-Make `Goscan` available globally:
+Make it executable and move it to your `$PATH`:
 
-bash
+```bash
+chmod +x goscan.sh
+sudo mv goscan.sh /usr/local/bin/goscan
+```
 
-CopyEdit
+Then you can run it anywhere using:
 
-`chmod +x Goscan sudo mv Goscan /usr/local/bin/Goscan`
+```
+goscan <args>
+```
 
-Now you can run `Goscan` from anywhere!
+## 📚 Usage
 
----
+### ➤ Single IP scan
 
-## 🗂️ Output Structure
 
-Results are saved under:
+```
+goscan 192.168.1.10
+goscan 192.168.1.10 rustscan
+```
 
-markdown
+### ➤ Multiple IPs
 
-CopyEdit
+```
+goscan -i 192.168.1.10,192.168.1.20
+goscan -i "192.168.1.10-13, 192.168.1.0/30"
+```
 
-`nmap/  └── 192_168_242_189/       ├── ports_only.txt       └── nmap_result.txt`
+### ➤ IP list from file
 
----
+```
+goscan -f targets.txt
+```
 
+### ➤ Output
+
+Each scan creates a folder named after the IP (e.g., `192_168_1_10/`) with:
+
+- `ports_only.txt`: List of open ports
+- `nmap_result.txt`: Full detailed scan
